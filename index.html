@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고슐랭 - 고려대 맞춤형 식당 추천</title>
+    <style>
+        /* 모바일 퍼스트 반응형 디자인 CSS */
+        :root {
+            --primary-color: #8C1D40; /* 고려대 상징색 톤 */
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px; /* 모바일 화면 최적화 */
+            min-height: 100vh;
+            background: var(--card-bg);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        header {
+            text-align: center;
+            padding: 10px 0 20px 0;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 28px;
+        }
+
+        header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .section {
+            margin-top: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 15px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn-submit {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-submit:hover {
+            background-color: #6a132e;
+        }
+
+        .btn-random {
+            background-color: #343a40;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 25px;
+            color: var(--primary-color);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+
+        /* 식당 카드 스타일 */
+        .restaurant-card {
+            background: #fff;
+            border: 1px solid #e1e4e6;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .restaurant-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #111;
+        }
+
+        .restaurant-score {
+            background: #fff0f1;
+            color: var(--primary-color);
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .restaurant-meta {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .restaurant-review {
+            background: #f1f3f5;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-style: italic;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>고슐랭 🐯</h1>
+        <p>고려대생을 위한 맞춤형 식당 추천 서비스</p>
+    </header>
+
+    <div class="section">
+        <label for="location">📍 현재 내 위치 (캠퍼스 거점)</label>
+        <select id="location">
+            <option value="정후">정경대 후문 (정후)</option>
+            <option value="안암역">안암역</option>
+            <option value="민광">민주광장 (민광)</option>
+            <option value="법후">법대 후문 (법후)</option>
+            <option value="노벨광장">이공대 노벨광장</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <label for="category">🍔 음식 카테고리</label>
+        <select id="category">
+            <option value="전체">상관없음 (전체)</option>
+            <option value="한식">한식</option>
+            <option value="일식">일식</option>
+            <option value="중식">중식</option>
+            <option value="양식">양식</option>
+            <option value="패스트푸드">패스트푸드</option>
+        </select>
+
+        <label for="price">💰 가격대 (가성비)</label>
+        <select id="price">
+            <option value="전체">상관없음 (전체)</option>
+            <option value="초가성비">7,000원 이하 (초가성비)</option>
+            <option value="실속">7,000원 ~ 10,000원 (실속)</option>
+            <option value="고급">10,000원 이상</option>
+        </select>
+
+        <label for="purpose">👥 방문 목적</label>
+        <select id="purpose">
+            <option value="전체">상관없음 (전체)</option>
+            <option value="혼밥">혼밥</option>
+            <option value="동행">2~4인 동행</option>
+            <option value="단체">단체 (회식/과반)</option>
+        </select>
+    </div>
+
+    <button class="btn-submit" onclick="getRecommendations()">맛집 찾기 (결과 조회 1초 미만)</button>
+    <button class="btn-random" onclick="getRandomRecommendation()">🎲 오늘 뭐 먹지? (랜덤 추천)</button>
+
+    <div id="result-section" style="display:none;">
+        <div class="result-title" id="result-heading">추천 결과 Top 3</div>
+        <div id="restaurant-list"></div>
+    </div>
+</div>
+
+<script>
+    // 테스트용 안암 상권 식당 데이터 가상 DB (PRD 기준 반영)
+    const restaurantDB = [
+        { name: "고대제육볶음", category: "한식", price: "실속", location: "정후", purpose: "혼밥", time: "도보 3분", menu: "제육볶음 (8,500원)", review: "정후 최고의 가성비! 15분 컷 가능합니다.", rating: 4.5 },
+        { name: "안암돈까스", category: "일식", price: "실속", location: "정후", purpose: "혼밥", time: "도보 5분", menu: "로스카츠 (9,000원)", review: "혼밥석 따로 있어서 편하게 먹기 좋습니다.", rating: 4.3 },
+        { name: "노벨짜장", category: "중식", price: "초가성비", location: "노벨광장", purpose: "동행", time: "도보 4분", menu: "짜장면+탕수육 세트 (7,000원)", review: "이공대생들의 영원한 가성비 동반자.", rating: 4.1 },
+        { name: "민광버거", category: "패스트푸드", price: "초가성비", location: "민광", purpose: "혼밥", time: "도보 2px", menu: "치즈버거 세트 (6,500원)", review: "공강 20분 남았을 때 흡입하기 딱 좋은 곳.", rating: 4.2 },
+        { name: "참살이파스타", category: "양식", price: "고급", location: "안암역", purpose: "동행", time: "도보 5분", menu: "매콤 크림 파스타 (12,000원)", review: "데이트나 동아리 소모임 장소로 강추합니다.", rating: 4.6 },
+        { name: "법후뚝배기", category: "한식", price: "초가성비", location: "법후", purpose: "혼밥", time: "도보 3분", menu: "순두부찌개 (6,500원)", review: "법후의 숨은 할머니 손맛 맛집, 공깃밥 무한 리필!", rating: 4.4 },
+        { name: "안암회관", category: "한식", price: "고급", location: "안암역", purpose: "단체", time: "도보 6분", menu: "삼겹살 무한리필 (15,000원)", review: "뒷풀이나 반회식할 때 이만한 공간이 없습니다.", rating: 4.0 }
+    ];
+
+    // 4.2 맞춤형 추천 알고리즘 (PO)
+    function getRecommendations() {
+        const userLoc = document.getElementById("location").value;
+        const userCat = document.getElementById("category").value;
+        const userPri = document.getElementById("price").value;
+        const userPur = document.getElementById("purpose").value;
+
+        // 필터링 및 매칭 점수 계산
+        let scoredList = restaurantDB.map(rest => {
+            let score = 0;
+            // 1순위: 위치가 맞으면 점수 대폭 부여 (이동 시간 제한 반영)
+            if (rest.location === userLoc) score += 5;
+            // 2순위: 카테고리 일치
+            if (userCat === "전체" || rest.category === userCat) score += 3;
+            // 3순위: 가격대 일치
+            if (userPri === "전체" || rest.price === userPri) score += 2;
+            // 4순위: 방문 목적 일치
+            if (userPur === "전체" || rest.purpose === userPur) score += 2;
+
+            return { ...rest, matchScore: score };
+        });
+
+        // 점수 높은 순 -> 평점 높은 순 정렬 후 Top 3 추출
+        scoredList.sort((a, b) => b.matchScore - a.matchScore || b.rating - a.rating);
+        const topResults = scoredList.slice(0, 3);
+
+        displayResults(topResults, "🎯 회원님을 위한 맞춤 맛집 Top 3");
+    }
+
+    // 4.4 "오늘 뭐 먹지?" 랜덤 추천 기능 (P1)
+    function getRandomRecommendation() {
+        // 평점 4.0 이상인 식당 중 무작위 1곳 추출
+        const highRatingRestaurants = restaurantDB.filter(rest => rest.rating >= 4.0);
+        const randomIndex = Math.floor(Math.random() * highRatingRestaurants.length);
+        const randomRest = [highRatingRestaurants[randomIndex]];
+
+        displayResults(randomRest, "🎲 고슐랭 랜덤 추천 맛집!");
+    }
+
+    // 결과 렌더링 함수
+    function displayResults(restaurants, titleText) {
+        const resultSection = document.getElementById("result-section");
+        const heading = document.getElementById("result-heading");
+        const listContainer = document.getElementById("restaurant-list");
+
+        heading.innerText = titleText;
+        listContainer.innerHTML = "";
+
+        if (restaurants.length === 0 || restaurants[0].matchScore === 0) {
+            listContainer.innerHTML = "<p style='text-align:center; padding: 20px; color:#999;'>조건에 맞는 식당이 없습니다. 필터를 변경해보세요!</p>";
+        } else {
+            restaurants.forEach(rest => {
+                const card = document.createElement("div");
+                card.className = "restaurant-card";
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="restaurant-name">${rest.name}</span>
+                        <span class="restaurant-score">⭐ ${rest.rating.toFixed(1)}</span>
+                    </div>
+                    <div class="restaurant-meta">
+                        🍲 ${rest.menu} | 🏃‍♂️ ${rest.location} (${rest.time})
+                    </div>
+                    <div class="restaurant-review">
+                        " ${rest.review} "
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        // 결과창 활성화 (PRD 성능 요구사항: 처리시간 1초 미만으로 즉시 노출)
+        resultSection.style.display = "block";
+        resultSection.scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+</body>
+</html>
