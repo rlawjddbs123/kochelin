@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>고슐랭 (Kochelin) - 고대생 맞춤형 거점별 식당 추천</title>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=7effdf3f009f7b1db9d2cfbb34106511&libraries=services"></script>
+    <style>
+        :root { --korea-crimson: #8C1D40; --bg-gray: #f5f6f9; }
+        body { font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: var(--bg-gray); color: #333; }
+        header { background-color: var(--korea-crimson); color: white; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .container { max-width: 500px; margin: 0 auto; padding: 15px; box-sizing: border-box; }
+        
+        /* 지도 영역 */
+        #map-container { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        #map { width: 100%; height: 250px; border-radius: 8px; background-color: #eee; }
+        .status-text { font-size: 13px; color: #444; margin-top: 8px; text-align: center; font-weight: bold; }
+
+        /* 거점 선택 섹션 */
+        .filter-section { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .filter-title { font-weight: bold; font-size: 15px; margin-bottom: 12px; color: #111; }
+        
+        /* 4대 입구 전용 세로형/바둑판 버튼 */
+        .entrance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .btn-entrance { background: #fff; border: 2px solid #e9ecef; padding: 12px 8px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; color: #444; text-align: center; }
+        .btn-entrance:hover { border-color: #ccc; }
+        .btn-entrance.active { border-color: var(--korea-crimson); background-color: #fdf2f2; color: var(--korea-crimson); }
+
+        /* 음식 카테고리 필터 시스템 */
+        .category-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; padding-top: 5px; border-top: 1px dashed #eee; }
+        .btn-cat { background: #e9ecef; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+        .btn-cat.active { background-color: var(--korea-crimson); color: white; font-weight: bold; }
+        
+        .btn-recommend { background-color: var(--korea-crimson); color: white; border: none; width: 100%; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 6px rgba(140,29,64,0.3); }
+        .btn-recommend:active { background-color: #6a132e; }
+
+        /* 추천 결과 리스트 */
+        .result-section { margin-top: 10px; }
+        .result-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; color: #111; display: flex; align-items: center; gap: 5px; }
+        .restaurant-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 5px solid var(--korea-crimson); display: flex; flex-direction: column; gap: 6px; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .res-name { font-size: 17px; font-weight: bold; color: #111; }
+        .res-dist { font-size: 13px; font-weight: bold; color: #e74c3c; background: #fdf2f2; padding: 2px 6px; border-radius: 4px; }
+        .res-addr { font-size: 12px; color: #777; }
+        .res-menu { font-size: 13px; color: #c0392b; font-weight: 500; margin-top: 2px; }
+        .res-feat { font-size: 12px; color: #555; background: #f8f9fa; padding: 6px; border-radius: 4px; margin-top: 4px; }
+        
+        /* 길안내 버튼 */
+        .btn-navi { background-color: #fee500; color: #191919; border: none; padding: 10px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 8px; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn-navi:hover { background-color: #fdd835; }
+    </style>
+</head>
+<body>
+
+    <header>고슐랭 (Kochelin)</header>
+
+    <div class="container">
+        <div id="map-container">
+            <div id="map"></div>
+            <div id="base-status" class="status-text">📍 출발지: 정경대 후문</div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-title">🏫 현재 출발할 학교 입구를 선택하세요</div>
+            
+            <div class="entrance-grid">
+                <button class="btn-entrance active" onclick="selectEntrance('정경대 후문', this)">정경대 후문</button>
+                <button class="btn-entrance" onclick="selectEntrance('고려대 정문', this)">고려대 정문</button>
+                <button class="btn-entrance" onclick="selectEntrance('법대 후문', this)">법대 후문</button>
+                <button class="btn-entrance" onclick="selectEntrance('노벨광장 입구', this)">노벨광장 입구</button>
+            </div>
+
+            <div class="filter-title" style="font-size: 13px; color: #555;">🍛 음식 종류 필터 (선택)</div>
+            <div class="category-buttons">
+                <button class="btn-cat active" onclick="selectCategory('전체', this)">전체</button>
+                <button class="btn-cat" onclick="selectCategory('한식', this)">한식</button>
+                <button class="btn-cat" onclick="selectCategory('일식', this)">일식</button>
+                <button class="btn-cat" onclick="selectCategory('중식', this)">중식</button>
+                <button class="btn-cat" onclick="selectCategory('양식', this)">양식</button>
+                <button class="btn-cat" onclick="selectCategory('분식', this)">분식</button>
+                <button class="btn-cat" onclick="selectCategory('패스트푸드', this)">패스트푸드</button>
+            </div>
+            
+            <button class="btn-recommend" onclick="recommendRestaurants()">🔍 해당 거점 기준 가장 가까운 식당 찾기</button>
+        </div>
+
+        <div class="result-section">
+            <div class="result-title" id="result-head-text">추천 버튼을 눌러보세요!</div>
+            <div id="restaurant-list">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수 설정
+        let map;
+        let baseMarker;
+        let selectedCategory = '전체';
+        
+        // 4대 거점 주소 및 위경도 DB 매핑
+        const entranceDB = {
+            "정경대 후문": { addr: "서울 성북구 고려대로27길 14", lat: 37.5872, lng: 127.0295 },
+            "고려대 정문": { addr: "서울 동대문구 안암로 150", lat: 37.5888, lng: 127.0341 },
+            "법대 후문": { addr: "서울 성북구 종암로 13 CJ법학관", lat: 37.5916, lng: 127.0326 },
+            "노벨광장 입구": { addr: "서울 성북구 안암로 73-15", lat: 37.5842, lng: 127.0304 }
+        };
+
+        // 현재 활성화된 출발 거점 (기본값: 정경대 후문)
+        let currentEntrance = "정경대 후문";
+        let baseLat = entranceDB["정경대 후문"].lat;
+        let baseLng = entranceDB["정경대 후문"].lng;
+        
+        // 카페 제외 80선 식당 마스터 데이터베이스 (정밀 위경도 매핑 완료)
+        const restaurantDB = [
+            { name: "고른햇살", cat: "분식", menu: "참치김밥 4.5 / 치즈라볶이 5.5", feat: "원탑 가성비 분식", addr: "서울 성북구 개운사길 14", lat: 37.5869, lng: 127.0296 },
+            { name: "백소정 안암본점", cat: "일식", menu: "마제소바 9.9 / 돈카츠 10.5", feat: "두툼한 일식 본점", addr: "서울 성북구 인촌로24길 27", lat: 37.5855, lng: 127.0295 },
+            { name: "용초수", cat: "중식", menu: "꿔바로우 14.0 / 호남볶음밥 8.5", feat: "사천식 중화요리 맛집", addr: "서울 성북구 인촌로24길 19", lat: 37.5857, lng: 127.0292 },
+            { name: "소문난의정부부대찌개", cat: "한식", menu: "부대찌개 11.0 / 제육 세트 26.0", feat: "라면사리 무한리필", addr: "서울 동대문구 제기로 11", lat: 37.5878, lng: 127.0343 },
+            { name: "근처식당", cat: "아시안", menu: "소고기쌀국수 13.0 / 푸팟퐁커리 32.0", feat: "깔끔한 아시안 밥약", addr: "서울 동대문구 제기로2길 4", lat: 37.5891, lng: 127.0348 },
+            { name: "이공김밥", cat: "분식", menu: "참치폭탄김밥 5.0 / 제육김밥 5.0", feat: "양이 엄청난 김밥집", addr: "서울 성북구 안암로 61-6", lat: 37.5840, lng: 127.0299 },
+            { name: "베나레스 본점", cat: "아시안", menu: "치킨마크니 12.5 / 커리세트 11.5", feat: "인도 커리 리필 가능", addr: "서울 성북구 인촌로24길 27", lat: 37.5854, lng: 127.0296 },
+            { name: "현고대닭발 본점", cat: "한식", menu: "원조닭발 10.0 / 만만한닭발 10.0", feat: "전통 있는 매운맛 성지", addr: "서울 동대문구 제기로2길 43", lat: 37.5898, lng: 127.0355 },
+            { name: "형제집", cat: "한식", menu: "닭곱창 9.0 / 닭갈비 8.0", feat: "회식 및 볶음밥 추천", addr: "서울 동대문구 제기로 25", lat: 37.5884, lng: 127.0359 },
+            { name: "뚝닭", cat: "한식", menu: "데리야끼뚝닭 8.0 / 마라뚝닭 8.5", feat: "1인 뚝배기 치킨찜", addr: "서울 동대문구 제기로2길 9", lat: 37.5892, lng: 127.0351 },
+            { name: "무르무르드카카오", cat: "양식", menu: "통삼겹스테이크 21.0 / 파스타 15.0", feat: "분위기 좋은 레스토랑", addr: "서울 성북구 인촌로 102", lat: 37.5861, lng: 127.0294 },
+            { name: "동우설렁탕", cat: "한식", menu: "설렁탕 10.0 / 수육 35.0", feat: "국물이 깊은 노포 맛집", addr: "서울 성북구 개운사길 45", lat: 37.5884, lng: 127.0278 },
+            { name: "영철스토리버거", cat: "패스트푸드", menu: "영철스트리트버거 4.5 / 치즈버거 5.5", feat: "고대 역사의 한 축", addr: "서울 동대문구 안암로 148", lat: 37.5910, lng: 127.0360 },
+            { name: "미뇽 브런치", cat: "양식", menu: "에그베네딕트 14.5 / 프렌치토스트 13.5", feat: "참살이길 브런치 맛집", addr: "서울 성북구 인촌로24길 47", lat: 37.5847, lng: 127.0298 },
+            { name: "춘자", cat: "한식", menu: "춘자보쌈 18.0 / 김치찌개 13.0", feat: "고대생들의 가성비 술집", addr: "서울 성북구 인촌로26길 42-2", lat: 37.5843, lng: 127.0287 },
+            { name: "치쿠와", cat: "일식", menu: "가츠동 8.5 / 에비동 9.5", feat: "정갈한 일식 덮밥", addr: "서울 성북구 인촌로24길 37", lat: 37.5851, lng: 127.0297 },
+            { name: "매스플레이트", cat: "양식", menu: "목살스테이크샐러드 22.0 / 필라프 13.5", feat: "양이 많은 이탈리안", addr: "서울 성북구 인촌로24길 13", lat: 37.5859, lng: 127.0289 },
+            { name: "고기반찬", cat: "한식", menu: "제육정식 8.5 / 삼겹정식 9.0", feat: "정후 대표 1인 고기밥상", addr: "서울 성북구 인촌로28길 13", lat: 37.5878, lng: 127.0290 },
+            { name: "마이카츠 안암점", cat: "일식", menu: "마이카츠 5.9 / 카츠돈 7.9", feat: "초가성비 일식 돈카츠", addr: "서울 성북구 인촌로 96", lat: 37.5858, lng: 127.0284 },
+            { name: "뚝배기스파게티", cat: "양식", menu: "토마토뚝배기 7.5 / 크림뚝배기 8.5", feat: "추억의 가성비 파스타", addr: "서울 성북구 인촌로24길 31", lat: 37.5854, lng: 127.0295 },
+            { name: "스시바라", cat: "일식", menu: "모듬초밥(10p) 12.0 / 특초밥 16.0", feat: "신선한 참살이길 초밥", addr: "서울 성북구 인촌로24길 51", lat: 37.5845, lng: 127.0299 },
+            { name: "한솥도시락 안암역점", cat: "패스트푸드", menu: "치킨마요 4.0 / 진달래도시락 7.5", feat: "초스피드 가성비 혼밥", addr: "서울 성북구 인촌로 100-1", lat: 37.5860, lng: 127.0292 },
+            { name: "맘스터치 고려대점", cat: "패스트푸드", menu: "싸이버거세트 6.9 / 휠렛버거세트 7.2", feat: "버거 혼밥의 정석", addr: "서울 성북구 인촌로24길 16", lat: 37.5858, lng: 127.0286 },
+            { name: "버거킹 안암역점", cat: "패스트푸드", menu: "와퍼세트 9.5 / 불고기와퍼세트 8.5", feat: "역세권 대형 버거 매장", addr: "서울 성북구 인촌로 98", lat: 37.5859, lng: 127.0289 },
+            { name: "서브웨이 안암역점", cat: "패스트푸드", menu: "이탈리안비엠티 6.7 / 에그마요 5.5", feat: "다이어트 및 샌드위치", addr: "서울 성북구 인촌로 94", lat: 37.5857, lng: 127.0281 },
+            { name: "미소야 안암점", cat: "일식", menu: "돈카츠김치우동전골 10.0 / 알밥 8.5", feat: "무난하고 깔끔한 우동/카츠", addr: "서울 성북구 인촌로24길 56", lat: 37.5844, lng: 127.0296 },
+            { name: "매콤돈가스&칙칙폴폴", cat: "일식", menu: "매콤돈가스 9.5 / 물냉면 8.0", feat: "매운 소스 조절 가능 카츠", addr: "서울 성북구 인촌로24길 25", lat: 37.5856, lng: 127.0294 },
+            { name: "비나 (BENA)", cat: "아시안", menu: "탄두리치킨 18.0 / 치킨커리 12.0", feat: "정통 현지인 인도 요리", addr: "서울 성북구 인촌로26길 42-1", lat: 37.5843, lng: 127.0286 },
+            { name: "홍콩반점0410 안암역점", cat: "중식", menu: "짜장면 6.5 / 짬뽕 7.5 / 탕수육 소 15.0", feat: "믿고 먹는 중식 프랜차이즈", addr: "서울 성북구 인촌로24길 7", lat: 37.5861, lng: 127.0286 },
+            { name: "맛하우스", cat: "한식", menu: "부대찌개 7.5 / 순두부찌개 7.0", feat: "정후 가성비 백반 노포", addr: "서울 성북구 인촌로28길 11", lat: 37.5877, lng: 127.0289 },
+            { name: "언니네이발관 (식당)", cat: "한식", menu: "불고기백반 8.5 / 오징어볶음 9.0", feat: "집밥 느낌 물씬 풍기는 곳", addr: "서울 성북구 인촌로26길 45-4", lat: 37.5840, lng: 127.0289 },
+            { name: "양지설렁탕", cat: "한식", menu: "설렁탕 9.5 / 도가니탕 16.0", feat: "고대역 인근 든든한 국밥", addr: "서울 동대문구 안암로 142", lat: 37.5906, lng: 127.0354 },
+            { name: "마라탕에프", cat: "중식", menu: "마라탕(100g) 1.9 / 마라샹궈 3.0", feat: "학생들이 자주 찾는 마라탕", addr: "서울 성북구 인촌로24길 21", lat: 37.5856, lng: 127.0293 },
+            { name: "탕화공방마라탕", cat: "중식", menu: "마라탕 1.8 / 꿔바로우 소 10.0", feat: "한국인 입맛 맞춤 사골육수", addr: "서울 성북구 개운사길 22-5", lat: 37.5875, lng: 127.0289 },
+            { name: "칠기마라탕", cat: "중식", menu: "마라탕 1.8 / 계란볶음밥 6.5", feat: "제기로 인근 얼큰한 마라", addr: "서울 동대문구 제기로2길 15", lat: 37.5894, lng: 127.0346 },
+            { name: "신선설농탕 안암점", cat: "한식", menu: "설농탕 10.0 / 순사골국 11.0", feat: "김치가 맛있는 깔끔한 국밥", addr: "서울 성북구 인촌로 86", lat: 37.5849, lng: 127.0267 },
+            { name: "신의주찹쌀순대 안암점", cat: "한식", menu: "순대국밥 9.0 / 뼈해장국 10.0", feat: "24시 든든한 순대국 혼밥", addr: "서울 성북구 인촌로 95", lat: 37.5858, lng: 127.0281 },
+            { name: "조마루뼈다귀 안암점", cat: "한식", menu: "뼈해장국 10.0 / 감자탕 소 30.0", feat: "동아리 뒤풀이 및 해장", addr: "서울 성북구 안암로 69", lat: 37.5844, lng: 127.0310 },
+            { name: "할매순대국 고대점", cat: "한식", menu: "순대국 8.0 / 수육국밥 8.5", feat: "고대역 가성비 국밥 라인", addr: "서울 동대문구 제기로4길 3", lat: 37.5912, lng: 127.0368 },
+            { name: "정정아식당 안암점", cat: "한식", menu: "닭볶음탕 소 22.0 / 꼬막무침 15.0", feat: "반주하기 좋은 가성비 맛집", addr: "서울 성북구 인촌로24길 46", lat: 37.5847, lng: 127.0294 },
+            { name: "역전할머니맥주 안암점", cat: "한식", menu: "짜파구리 9.0 / 오징어입 8.0", feat: "안주 가성비 최강 맥주집", addr: "서울 성북구 인촌로24길 35", lat: 37.5852, lng: 127.0296 },
+            { name: "치킨마루 안암점", cat: "패스트푸드", menu: "크리스피치킨 15.0 / 양념치킨 17.0", feat: "이공대 인근 가성비 테이크아웃", addr: "서울 성북구 안암로9길 31", lat: 37.5828, lng: 127.0285 },
+            { name: "아웃닭 안암점", cat: "패스트푸드", menu: "후라이드치킨 21.8 / 양념치킨 22.8", feat: "감자튀김/떡 산더미 치킨", addr: "서울 성북구 인촌로24길 26", lat: 37.5855, lng: 127.0293 },
+            { name: "노랑통닭 안암역점", cat: "패스트푸드", menu: "순살3종세트 21.0 / 알싸한마늘치킨 21.0", feat: "양이 많아 과 소모임 추천", addr: "서울 성북구 인촌로 104-1", lat: 37.5862, lng: 127.0297 },
+            { name: "삼통치킨 본점", cat: "패스트푸드", menu: "마늘치킨 22.0 / 후라이드 20.0", feat: "고려대 대표 마늘치킨 성지", addr: "서울 성북구 인촌로 92", lat: 37.5856, lng: 127.0278 },
+            { name: "고대닭갈비", cat: "한식", menu: "뼈없는닭갈비 11.0 / 치즈사리 3.0", feat: "정후 닭갈비 볶음밥 코스", addr: "서울 성북구 인촌로28길 17", lat: 37.5879, lng: 127.0292 },
+            { name: "유가네닭갈비 안암점", cat: "한식", menu: "유가네닭갈비 10.0 / 닭갈비철판볶음밥 7.5", feat: "무난한 닭갈비 볶음밥", addr: "서울 성북구 인촌로24길 24", lat: 37.5855, lng: 127.0291 },
+            { name: "오투닭갈비 고대점", cat: "한식", menu: "오투닭갈비 13.0 / 부대찌개 9.0", feat: "양 푸짐하고 깔끔한 매장", addr: "서울 동대문구 제기로 33", lat: 37.5888, lng: 127.0366 },
+            { name: "소담길", cat: "한식", menu: "김치찌개 7.5 / 제육볶음 8.5", feat: "법후 학생들의 소중한 집밥", addr: "서울 성북구 회기로3길 13", lat: 37.5915, lng: 127.0321 },
+            { name: "법후유정식당", cat: "한식", menu: "된장찌개 7.0 / 오징어덮밥 8.0", feat: "가성비 넘치는 이모님 손맛", addr: "서울 성북구 회기로3길 7", lat: 37.5913, lng: 127.0318 },
+            { name: "토로생라멘", cat: "일식", menu: "돈코츠라멘 8.5 / 미소라멘 9.0", feat: "진한 돈골 육수 일본식 라멘", addr: "서울 성북구 인촌로24길 43", lat: 37.5849, lng: 127.0297 },
+            { name: "쿠이도락", cat: "일식", menu: "돈코츠라멘 8.0 / 차슈동 8.5", feat: "밥 무한리필 가능한 라멘 맛집", addr: "서울 성북구 인촌로24길 29", lat: 37.5854, lng: 127.0294 },
+            { name: "고화로", cat: "한식", menu: "숙성삼겹살 15.0 / 목살 15.0", feat: "구워주는 깔끔한 삼겹살집", addr: "서울 성북구 인촌로26길 45-2", lat: 37.5839, lng: 127.0291 },
+            { name: "제육대가 안암점", cat: "한식", menu: "불향제육정식 9.0 / 짜글이 8.5", feat: "불맛 가득한 제육 혼밥", addr: "서울 성북구 개운사길 21-4", lat: 37.5874, lng: 127.0284 },
+            { name: "돈가하우스", cat: "일식", menu: "수제돈가스 8.5 / 치즈돈가스 10.0", feat: "경양식과 일식 사이 바삭함", addr: "서울 동대문구 제기로4길 11", lat: 37.5918, lng: 127.0361 },
+            { name: "모이세해장국", cat: "한식", menu: "모이세해장국 9.0 / 내장탕 11.0", feat: "날달걀 넣어 먹는 제주식 해장국", addr: "서울 동대문구 제기로 12", lat: 37.5879, lng: 127.0345 },
+            { name: "고대멸치국수", cat: "분식", menu: "멸치국수 6.0 / 비빔국수 7.0 / 주먹밥 3.0", feat: "고대역 앞 가성비 국수 노포", addr: "서울 동대문구 제기로2길 3", lat: 37.5890, lng: 127.0346 },
+            { name: "부부식당", cat: "한식", menu: "순두부백반 7.5 / 제육볶음 8.5", feat: "개운사길 대표 집밥 밥집", addr: "서울 성북구 개운사길 26", lat: 37.5875, lng: 127.0275 },
+            { name: "스시토로", cat: "일식", menu: "런치초밥(10p) 11.0 / 연어롤 13.0", feat: "가성비 좋은 점심 초밥세트", addr: "서울 성북구 인촌로24길 14", lat: 37.5859, lng: 127.0284 },
+            { name: "마쯔무라 돈카츠", cat: "일식", menu: "로스카츠 9.5 / 히레카츠 10.5", feat: "참살이길 숨은 돈카츠 강자", addr: "서울 성북구 인촌로24길 18", lat: 37.5857, lng: 127.0286 },
+            { name: "피자헛 안암역점", cat: "양식", menu: "1인피자세트 7.9 / 페퍼로니피자 M 19.9", feat: "1인 피자 혼밥석 구비", addr: "서울 성북구 인촌로 100", lat: 37.5861, lng: 127.0290 },
+            { name: "도미노피자 고대점", cat: "양식", menu: "포테이토피자 L 27.9 / 블랙타이거 L 35.9", feat: "방문포장 할인율 높음", addr: "서울 동대문구 안암로 136", lat: 37.5902, lng: 127.0351 },
+            { name: "미스터피자 고대점", cat: "양식", menu: "피자뷔페 평일 13.9 / 주말 15.9", feat: "피자 무제한 뷔페 운영", addr: "서울 성북구 인촌로24길 32", lat: 37.5852, lng: 127.0294 },
+            { name: "파파존스 피자 안암점", cat: "양식", menu: "수퍼파파스 L 28.5 / 존스페이버릿 L 29.5", feat: "금요일 방문포장 1+1 행사", addr: "서울 성북구 안암로 79", lat: 37.5852, lng: 127.0322 },
+            { name: "피자스쿨 안암점", cat: "양식", menu: "고구마피자 10.9 / 포테이토피자 11.9", feat: "학생 동아리 간식 단골", addr: "서울 성북구 개운사길 34", lat: 37.5879, lng: 127.0269 },
+            { name: "서래갈매기 안암점", cat: "한식", menu: "갈매기살(500g) 27.0 / 껍데기 8.0", feat: "전통의 부서 뒷풀이 고깃집", addr: "서울 성북구 인촌로24길 28", lat: 37.5854, lng: 127.0293 },
+            { name: "화화돼지왕갈비 고대점", cat: "한식", menu: "흑돼지왕갈비 15.9 / 된장찌개 3.0", feat: "가족 모임 및 단체 숯불갈비", addr: "서울 동대문구 제기로 16", lat: 37.5878, lng: 127.0350 },
+            { name: "한옥집김치찜 안암점", cat: "한식", menu: "김치찜정식 9.5 / 김치찌개백반 9.0", feat: "새콤하고 부드러운 김치찜", addr: "서울 성북구 인촌로24길 40", lat: 37.5849, lng: 127.0294 },
+            { name: "바르다김선생 안암역점", cat: "분식", menu: "바른김밥 4.5 / 매운제육쌈김밥 5.8", feat: "재료가 정갈하고 깔끔한 분식", addr: "서울 성북구 인촌로 99-1", lat: 37.5862, lng: 127.0282 },
+            { name: "신전떡볶이 안암점", cat: "분식", menu: "떡볶이 4.0 / 오뎅튀김(5p) 1.7", feat: "매운 떡볶이와 튀김 조합", addr: "서울 성북구 개운사길 21-3", lat: 37.5873, lng: 127.0284 },
+            { name: "엽기떡볶이 안암점", cat: "분식", menu: "엽기떡볶이(3~4인) 14.0 / 주먹밥 2.0", feat: "시험기간 스트레스 해소용 매운맛", addr: "서울 성북구 인촌로24길 41", lat: 37.5851, lng: 127.0297 },
+            { name: "조스떡볶이 안암역점", cat: "분식", menu: "죠스세트(1인) 6.5 / 떡튀순세트 14.5", feat: "안암역 출구 앞 가볍게 한 끼", addr: "서울 성북구 인촌로 100-2", lat: 37.5861, lng: 127.0291 },
+            { name: "국수나무 안암점", cat: "분식", menu: "생면국수 6.5 / 돈까스정식 10.5", feat: "메뉴가 다양해 고르기 편함", addr: "서울 성북구 안암로9길 33", lat: 37.5826, lng: 127.0286 },
+            { name: "역전우동0410 안암역점", cat: "일식", menu: "옛날우동 4.5 / 돈까스덮밥 모밀세트 9.0", feat: "빠르고 저렴한 일식 면류 혼밥", addr: "서울 성북구 인촌로 93", lat: 37.5857, lng: 127.0278 },
+            { name: "안암꼬치", cat: "한식", menu: "모둠꼬치 18.0 / 염통꼬치 8.0", feat: "맥주 한 잔 하기 좋은 노포 꼬치", addr: "서울 성북구 인촌로24길 60", lat: 37.5841, lng: 127.0297 },
+            { name: "밀플랜비 고대점", cat: "패스트푸드", menu: "치킨라이스부리또 5.5 / 감자튀김 3.0", feat: "학생들이 사랑하는 거대 부리또", addr: "서울 성북구 인촌로24길 62", lat: 37.5840, lng: 127.0298 },
+            { name: "도스마스 고대점", cat: "패스트푸드", menu: "믹스부리또 5.5 / 점보 추가 1.0", feat: "이공대생의 소중한 부리또 혼밥", addr: "서울 성북구 안암로 61-2", lat: 37.5838, lng: 127.0298 },
+            { name: "에그드랍 안암역점", cat: "패스트푸드", menu: "미스터에그 3.9 / 베이컨더블치즈 5.4", feat: "토스트로 가볍게 아침 해결", addr: "서울 성북구 인촌로 97-1", lat: 37.5860, lng: 127.0282 },
+            { name: "이삭토스트 고대점", cat: "패스트푸드", menu: "햄스페셜토스트 3.5 / 딥치즈베이컨 4.2", feat: "등굣길 가성비 토스트", addr: "서울 동대문구 제기로 15", lat: 37.5880, lng: 127.0351 },
+            { name: "청석골", cat: "한식", menu: "뼈해장국 8.5 / 감자탕 정식 8.5", feat: "정후 걸쭉하고 진한 감자탕 국밥", addr: "서울 성북구 인촌로28길 9", lat: 37.5876, lng: 127.0288 },
+            { name: "고대돈까스", cat: "일식", menu: "수제왕돈까스 8.5 / 치즈오븐돈까스 9.5", feat: "정후 가성비 좋은 수제 돈카츠", addr: "서울 성북구 인촌로28길 11", lat: 37.5877, lng: 127.0289 },
+            { name: "시골집", cat: "한식", menu: "제육볶음백반 8.0 / 순두부 7.0", feat: "반찬 가짓수 많은 할머니 백반", addr: "서울 성북구 개운사길 22-3", lat: 37.5875, lng: 127.0291 },
+            { name: "고가네식당", cat: "한식", menu: "동태탕 8.5 / 김치찌개 7.5", feat: "숨겨진 집밥 스타일 가성비 맛집", addr: "서울 동대문구 제기로4길 32", lat: 37.5925, lng: 127.0348 },
+            { name: "하남돼지집 안암점", cat: "한식", menu: "생삼겹살 16.0 / 고추장찌개 7.0", feat: "초벌구이해 주는 믿고 먹는 삼겹살", addr: "서울 성북구 인촌로24길 36", lat: 37.5850, lng: 127.0294 },
+            { name: "칠성포차 안암점", cat: "한식", menu: "칠성마약찜닭 24.0 / 누룽지탕 15.0", feat: "찜닭에 볶음밥 조합 술안주 최고", addr: "서울 성북구 인촌로24길 38", lat: 37.5849, lng: 127.0294 },
+            { name: "원조할머니보쌈 고대점", cat: "한식", menu: "보쌈정식 10.0 / 1인보쌈 11.0", feat: "점심 특선 보쌈정식 가성비 우수", addr: "서울 동대문구 제기로2길 11", lat: 37.5891, lng: 127.0348 },
+            { name: "두부촌 본점", cat: "한식", menu: "숨두부정식 11.0 / 해물순두부 11.0", feat: "교직원 및 부모님 모시기 좋은 곳", addr: "서울 성북구 안암로 73", lat: 37.5849, lng: 127.0318 }
+        ];
+
+        // 1. 페이지 오픈 시 지도 로드 및 첫 추천 실행
+        window.onload = function() {
+            initMap();
+            recommendRestaurants();
+        };
+
+        function initMap() {
+            const container = document.getElementById('map');
+            const options = {
+                center: new kakao.maps.LatLng(baseLat, baseLng),
+                level: 3
+            };
+            map = new kakao.maps.Map(container, options);
+            
+            // 거점 중심 핀마커 설정
+            baseMarker = new kakao.maps.Marker({
+                position: new kakao.maps.LatLng(baseLat, baseLng),
+                map: map
+            });
+        }
+
+        // 2. 사용자가 버튼으로 거점을 교체할 때 작동하는 함수
+        function selectEntrance(entranceName, element) {
+            currentEntrance = entranceName;
+            baseLat = entranceDB[entranceName].lat;
+            baseLng = entranceDB[entranceName].lng;
+
+            // UI 텍스트 및 버튼 스타일 업데이트
+            document.getElementById('base-status').innerText = `📍 출발지: ${entranceName}`;
+            const buttons = document.querySelectorAll('.btn-entrance');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+
+            // 지도 중심 변경 및 마커 재배치
+            const moveLatLon = new kakao.maps.LatLng(baseLat, baseLng);
+            map.setCenter(moveLatLon);
+            baseMarker.setPosition(moveLatLon);
+
+            // 거점 변경 시 즉시 맛집 재연산
+            recommendRestaurants();
+        }
+
+        // 3. 음식 종류 필터 변경 함수
+        function selectCategory(cat, element) {
+            selectedCategory = cat;
+            const buttons = document.querySelectorAll('.btn-cat');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        // 4. 거점 기준 하버사인 직선거리 계산 알고리즘 (단위: 미터)
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371e3;
+            const f1 = lat1 * Math.PI / 180;
+            const f2 = lat2 * Math.PI / 180;
+            const df = (lat2 - lat1) * Math.PI / 180;
+            const dl = (lng2 - lng1) * Math.PI / 180;
+
+            const a = Math.sin(df/2) * Math.sin(df/2) +
+                      Math.cos(f1) * Math.cos(f2) *
+                      Math.sin(dl/2) * Math.sin(dl/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+
+        // 5. 선택 거점 기반 실시간 동선 매칭 및 카카오 맵 내비게이션 주소 연동
+        function recommendRestaurants() {
+            const listContainer = document.getElementById('restaurant-list');
+            listContainer.innerHTML = ''; 
+
+            // 선택한 입구 좌표 기준으로 거리 계산
+            let filtered = restaurantDB.map(store => {
+                const distance = getDistance(baseLat, baseLng, store.lat, store.lng);
+                return { ...store, dist: Math.round(distance) };
+            });
+
+            if (selectedCategory !== '전체') {
+                filtered = filtered.filter(store => store.cat === selectedCategory);
+            }
+
+            // 최단거리(도보 동선 최적화) 순 정렬
+            filtered.sort((a, b) => a.dist - b.dist);
+
+            // 가장 동선이 짧은 상위 3개 식당 필터링
+            const top3 = filtered.slice(0, 3);
+            
+            document.getElementById('result-head-text').innerHTML = `🔥 [${currentEntrance}] 기준 가장 가까운 식당 리스트`;
+
+            if(top3.length === 0) {
+                listContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #999;">해당 카테고리의 식당 정보가 존재하지 않습니다.</div>';
+                return;
+            }
+
+            // 화면에 카드 정보 렌더링 및 카카오맵 길안내 스키마 바인딩
+            top3.forEach((store, index) => {
+                // 출발지 이름에 '정경대 후문', '고려대 정문' 등 선택된 명칭이 동적으로 전송되어 즉시 내비게이션이 활성화됩니다.
+                const naviUrl = `https://map.kakao.com/link/route/${encodeURIComponent(currentEntrance)},${baseLat},${baseLng},${encodeURIComponent(store.name)},${store.lat},${store.lng}`;
+
+                const card = document.createElement('div');
+                card.className = 'restaurant-card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="res-name">${index + 1}. ${store.name} <small style="font-weight:normal; color:#888; font-size:12px;">(${store.cat})</small></span>
+                        <span class="res-dist">🚶 도보 약 ${store.dist}m</span>
+                    </div>
+                    <span class="res-addr">${store.addr}</span>
+                    <span class="res-menu">🍽️ ${store.menu}</span>
+                    <span class="res-feat">💡 ${store.feat}</span>
+                    <a href="${naviUrl}" target="_blank" class="btn-navi">
+                        🗺️ [${currentEntrance}]에서 출발하는 도보 길안내 받기
+                    </a>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
