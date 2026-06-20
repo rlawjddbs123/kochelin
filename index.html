@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>고슐랭 (Kochelin) - 인앱 자체 길안내</title>
+    <!-- 카카오 지도 API 라이브러리 -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=7effdf3f009f7b1db9d2cfbb34106511&libraries=services"></script>
+    <style>
+        :root { --korea-crimson: #8C1D40; --bg-gray: #f5f6f9; }
+        body { font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: var(--bg-gray); color: #333; }
+        header { background-color: var(--korea-crimson); color: white; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .container { max-width: 500px; margin: 0 auto; padding: 15px; box-sizing: border-box; }
+        
+        /* 지도 영역 */
+        #map-container { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; position: relative; }
+        #map { width: 100%; height: 280px; border-radius: 8px; background-color: #eee; }
+        .status-text { font-size: 13px; color: #444; margin-top: 8px; text-align: center; font-weight: bold; }
+        
+        /* 현재 안내중인 경로 표시용 플로팅 바 */
+        #navi-status-bar { display: none; background: #2c3e50; color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 8px; font-weight: bold; }
+
+        /* 필터 섹션 */
+        .filter-section { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .filter-title { font-weight: bold; font-size: 14px; margin-bottom: 10px; color: #111; }
+        
+        /* 거점 선택 버튼 */
+        .entrance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .btn-entrance { background: #fff; border: 2px solid #e9ecef; padding: 10px 6px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.2s; color: #444; text-align: center; }
+        .btn-entrance.active { border-color: var(--korea-crimson); background-color: #fdf2f2; color: var(--korea-crimson); }
+
+        /* 가격 및 음식 필터 */
+        .filter-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; padding-top: 5px; border-top: 1px dashed #eee; }
+        .btn-filter { background: #e9ecef; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+        .btn-filter.active { background-color: var(--korea-crimson); color: white; font-weight: bold; }
+        .btn-price.active { background-color: #e67e22; color: white; font-weight: bold; }
+        
+        .btn-recommend { background-color: var(--korea-crimson); color: white; border: none; width: 100%; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 6px rgba(140,29,64,0.3); }
+
+        /* 결과 리스트 */
+        .restaurant-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 5px solid var(--korea-crimson); display: flex; flex-direction: column; gap: 6px; transition: transform 0.2s; }
+        .restaurant-card.selected { border-left-color: #27ae60; background-color: #f4fbf7; transform: scale(1.01); }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .res-name { font-size: 16px; font-weight: bold; color: #111; }
+        .res-dist { font-size: 12px; font-weight: bold; color: #e74c3c; background: #fdf2f2; padding: 2px 6px; border-radius: 4px; }
+        .res-addr { font-size: 12px; color: #777; }
+        .res-menu { font-size: 13px; color: #c0392b; font-weight: 500; }
+        .res-price-tag { font-size: 11px; background: #f39c12; color: white; padding: 1px 5px; border-radius: 3px; font-weight: bold; margin-left: 5px; }
+        .res-feat { font-size: 12px; color: #555; background: #f8f9fa; padding: 6px; border-radius: 4px; }
+        
+        /* 인앱 길안내 버튼 */
+        .btn-navi { background-color: #27ae60; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 6px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn-navi:hover { background-color: #219653; }
+    </style>
+</head>
+<body>
+
+    <header>고슐랭 (Kochelin)</header>
+
+    <div class="container">
+        <!-- 1. 지도 화면 (인앱 경로선 렌더링 영역) -->
+        <div id="map-container">
+            <div id="map"></div>
+            <div id="base-status" class="status-text">📍 출발지: 정경대 후문</div>
+            <div id="navi-status-bar"></div>
+        </div>
+
+        <!-- 2. 필터 시스템 -->
+        <div class="filter-section">
+            <div class="filter-title">🏫 출발할 학교 입구 선택</div>
+            <div class="entrance-grid">
+                <button class="btn-entrance active" onclick="selectEntrance('정경대 후문', this)">정경대 후문</button>
+                <button class="btn-entrance" onclick="selectEntrance('고려대 정문', this)">고려대 정문</button>
+                <button class="btn-entrance" onclick="selectEntrance('법대 후문', this)">법대 후문</button>
+                <button class="btn-entrance" onclick="selectEntrance('노벨광장 입구', this)">노벨광장 입구</button>
+            </div>
+
+            <div class="filter-title" style="color: #e67e22;">💰 가격대 선택 필터</div>
+            <div class="filter-group">
+                <button class="btn-filter btn-price active" onclick="selectPrice('전체', this)">전체 가격</button>
+                <button class="btn-filter btn-price" onclick="selectPrice('가성비', this)">만 원 이하 (가성비)</button>
+                <button class="btn-filter btn-price" onclick="selectPrice('일반', this)">1만원~1.5만원 (무난)</button>
+                <button class="btn-filter btn-price" onclick="selectPrice('모임', this)">1.5만원 이상 (밥약/모임)</button>
+            </div>
+
+            <div class="filter-title" style="color: var(--korea-crimson);">🍛 음식 종류 필터</div>
+            <div class="filter-group">
+                <button class="btn-filter btn-cat active" onclick="selectCategory('전체', this)">전체 요리</button>
+                <button class="btn-filter btn-cat" onclick="selectCategory('한식', this)">한식</button>
+                <button class="btn-filter btn-cat" onclick="selectCategory('일식', this)">일식</button>
+                <button class="btn-filter btn-cat" onclick="selectCategory('중식', this)">중식</button>
+                <button class="btn-filter btn-cat" onclick="selectCategory('양식', this)">양식</button>
+                <button class="btn-filter btn-cat" onclick="selectCategory('분식', this)">분식</button>
+            </div>
+            
+            <button class="btn-recommend" onclick="recommendRestaurants()">🔍 조건에 맞는 가장 가까운 식당 찾기</button>
+        </div>
+
+        <!-- 3. 결과 리스트 -->
+        <div class="result-section">
+            <div class="filter-title" id="result-head-text" style="font-size: 15px;">추천 버튼을 눌러보세요!</div>
+            <div id="restaurant-list"></div>
+        </div>
+    </div>
+
+    <script>
+        let map, baseMarker, destMarker;
+        let polyline = null; // 경로선을 저장할 객체
+        let selectedCategory = '전체';
+        let selectedPrice = '전체';
+        
+        const entranceDB = {
+            "정경대 후문": { lat: 37.5872, lng: 127.0295 },
+            "고려대 정문": { lat: 37.5888, lng: 127.0341 },
+            "법대 후문": { lat: 37.5916, lng: 127.0326 },
+            "노벨광장 입구": { lat: 37.5842, lng: 127.0304 }
+        };
+
+        let currentEntrance = "정경대 후문";
+        let baseLat = entranceDB["정경대 후문"].lat;
+        let baseLng = entranceDB["정경대 후문"].lng;
+        
+        const restaurantDB = [
+            { name: "고른햇살", cat: "분식", price: "가성비", menu: "참치김밥 4.5 / 치즈라볶이 5.5", feat: "원탑 가성비 분식", addr: "서울 성북구 개운사길 14", lat: 37.5869, lng: 127.0296 },
+            { name: "백소정 안암본점", cat: "일식", price: "일반", menu: "마제소바 9.9 / 돈카츠 10.5", feat: "두툼한 일식 본점", addr: "서울 성북구 인촌로24길 27", lat: 37.5855, lng: 127.0295 },
+            { name: "용초수", cat: "중식", price: "일반", menu: "꿔바로우 14.0 / 호남볶음밥 8.5", feat: "사천식 중화요리 맛집", addr: "서울 성북구 인촌로24길 19", lat: 37.5857, lng: 127.0292 },
+            { name: "소문난의정부부대찌개", cat: "한식", price: "일반", menu: "부대찌개 11.0 / 제육 세트 26.0", feat: "라면사리 무한리필", addr: "서울 동대문구 제기로 11", lat: 37.5878, lng: 127.0343 },
+            { name: "근처식당", cat: "양식", price: "모임", menu: "소고기쌀국수 13.0 / 푸팟퐁커리 32.0", feat: "깔끔한 아시안 밥약", addr: "서울 동대문구 제기로2길 4", lat: 37.5891, lng: 127.0348 },
+            { name: "이공김밥", cat: "분식", price: "가성비", menu: "참치폭탄김밥 5.0 / 제육김밥 5.0", feat: "양이 엄청난 김밥집", addr: "서울 성북구 안암로 61-6", lat: 37.5840, lng: 127.0299 },
+            { name: "동우설렁탕", cat: "한식", price: "일반", menu: "설렁탕 10.0 / 수육 35.0", feat: "국물이 깊은 노포 맛집", addr: "서울 성북구 개운사길 45", lat: 37.5884, lng: 127.0278 },
+            { name: "무르무르드카카오", cat: "양식", price: "모임", menu: "통삼겹스테이크 21.0 / 파스타 15.0", feat: "분위기 좋은 레스토랑", addr: "서울 성북구 인촌로 102", lat: 37.5861, lng: 127.0294 },
+            { name: "고기반찬", cat: "한식", price: "가성비", menu: "제육정식 8.5 / 삼겹정식 9.0", feat: "정후 대표 1인 고기밥상", addr: "서울 성북구 인촌로28길 13", lat: 37.5878, lng: 127.0290 },
+            { name: "소담길", cat: "한식", price: "가성비", menu: "김치찌개 7.5 / 제육볶음 8.5", feat: "법후 학생들의 소중한 집밥", addr: "서울 성북구 회기로3길 13", lat: 37.5915, lng: 127.0321 },
+            { name: "법후유정식당", cat: "한식", price: "가성비", menu: "된장찌개 7.0 / 오징어덮밥 8.0", feat: "가성비 넘치는 이모님 손맛", addr: "서울 성북구 회기로3길 7", lat: 37.5913, lng: 127.0318 },
+            { name: "두부촌 본점", cat: "한식", price: "일반", menu: "숨두부정식 11.0 / 해물순두부 11.0", feat: "교직원 및 부모님 모시기 좋은 곳", addr: "서울 성북구 안암로 73", lat: 37.5849, lng: 127.0318 }
+        ];
+
+        window.onload = function() {
+            initMap();
+            recommendRestaurants();
+        };
+
+        function initMap() {
+            map = new kakao.maps.Map(document.getElementById('map'), {
+                center: new kakao.maps.LatLng(baseLat, baseLng),
+                level: 3
+            });
+            baseMarker = new kakao.maps.Marker({
+                position: new kakao.maps.LatLng(baseLat, baseLng),
+                map: map
+            });
+            destMarker = new kakao.maps.Marker({ map: null }); // 초기엔 목적지 마커 숨김
+        }
+
+        function clearNavigation() {
+            if (polyline) { polyline.setMap(null); polyline = null; }
+            destMarker.setMap(null);
+            document.getElementById('navi-status-bar').style.display = 'none';
+            document.querySelectorAll('.restaurant-card').forEach(c => c.classList.remove('selected'));
+        }
+
+        function selectEntrance(name, element) {
+            currentEntrance = name;
+            baseLat = entranceDB[name].lat;
+            baseLng = entranceDB[name].lng;
+            document.getElementById('base-status').innerText = `📍 출발지: ${name}`;
+            document.querySelectorAll('.btn-entrance').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            
+            clearNavigation();
+            map.setCenter(new kakao.maps.LatLng(baseLat, baseLng));
+            baseMarker.setPosition(new kakao.maps.LatLng(baseLat, baseLng));
+            recommendRestaurants();
+        }
+
+        function selectPrice(price, element) {
+            selectedPrice = price;
+            document.querySelectorAll('.btn-price').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function selectCategory(cat, element) {
+            selectedCategory = cat;
+            document.querySelectorAll('.btn-cat').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371e3;
+            const f1 = lat1 * Math.PI / 180, f2 = lat2 * Math.PI / 180;
+            const df = (lat2 - lat1) * Math.PI / 180, dl = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(df/2) * Math.sin(df/2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dl/2) * Math.sin(dl/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        /* 🔴 [핵심 기능] 외부 사이트 이동 없이 내부 맵에 실시간 경로선(Polyline) 그리기 */
+        function drawRouteInApp(storeLat, storeLng, storeName, dist, cardId) {
+            clearNavigation(); // 이전 선 제거
+
+            const startPos = new kakao.maps.LatLng(baseLat, baseLng);
+            const endPos = new kakao.maps.LatLng(storeLat, storeLng);
+
+            // 1. 목적지 마커 생성 후 지도 표시
+            destMarker.setPosition(endPos);
+            destMarker.setMap(map);
+
+            // 2. 출발지와 목적지를 이어주는 내부 경로선(Polyline) 옵션 정의
+            polyline = new kakao.maps.Polyline({
+                path: [startPos, endPos], // 직선 기반 최단거리 시각화 피드백
+                strokeWeight: 6,
+                strokeColor: '#27ae60',
+                strokeOpacity: 0.85,
+                strokeStyle: 'solid'
+            });
+            polyline.setMap(map);
+
+            // 3. 두 위치가 모두 보이도록 지도 영역 최적화(바운드) 조정
+            const bounds = new kakao.maps.LatLngBounds();
+            bounds.extend(startPos);
+            bounds.extend(endPos);
+            map.setBounds(bounds);
+
+            // 4. UI 상태 업데이트
+            document.getElementById(`card-${cardId}`).classList.add('selected');
+            const statusBar = document.getElementById('navi-status-bar');
+            statusBar.style.display = 'block';
+            statusBar.innerHTML = `🏁 [${storeName}] 내부 경로 안내 중 (직선 거리 약 ${dist}m)`;
+        }
+
+        function recommendRestaurants() {
+            clearNavigation();
+            const listContainer = document.getElementById('restaurant-list');
+            listContainer.innerHTML = ''; 
+
+            let filtered = restaurantDB.map(store => {
+                return { ...store, dist: Math.round(getDistance(baseLat, baseLng, store.lat, store.lng)) };
+            });
+
+            if (selectedCategory !== '전체') filtered = filtered.filter(store => store.cat === selectedCategory);
+            if (selectedPrice !== '전체') filtered = filtered.filter(store => store.price === selectedPrice);
+
+            filtered.sort((a, b) => a.dist - b.dist);
+            const top3 = filtered.slice(0, 3);
+            
+            document.getElementById('result-head-text').innerHTML = `🔥 [${currentEntrance}] 기준 맞춤 식당 리스트`;
+
+            if(top3.length === 0) {
+                listContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #999;">조건에 맞는 식당 정보가 존재하지 않습니다. 다른 필터를 선택해 보세요.</div>';
+                return;
+            }
+
+            top3.forEach((store, index) => {
+                const card = document.createElement('div');
+                card.className = 'restaurant-card';
+                card.id = `card-${index}`;
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="res-name">${index + 1}. ${store.name} 
+                            <span class="res-price-tag">${store.price}</span>
+                        </span>
+                        <span class="res-dist">🚶 도보 ${store.dist}m</span>
+                    </div>
+                    <span class="res-addr">${store.addr}</span>
+                    <span class="res-menu">🍽️ ${store.menu}</span>
+                    <span class="res-feat">💡 ${store.feat}</span>
+                    <button class="btn-navi" onclick="drawRouteInApp(${store.lat}, ${store.lng}, '${store.name}', ${store.dist}, ${index})">
+                        🎯 이 식당까지의 경로 지도에 바로 보기
+                    </button>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
